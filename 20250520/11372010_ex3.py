@@ -13,9 +13,6 @@ rcParams['axes.unicode_minus'] = False
 
 # ✅ 主程式功能：抓取站點 + 繪製地圖
 async def find_bus_and_plot(route_id: str):
-    """
-    抓取公車站點資訊，並將路線繪製於北北基桃行政區地圖上。
-    """
     route_id = route_id.strip()
     url = f"https://ebus.gov.taipei/Route/StopsOfRoute?routeid={route_id}"
 
@@ -60,50 +57,48 @@ async def find_bus_and_plot(route_id: str):
         print("⚠️ 沒有成功抓取到任何站牌資訊。")
         return
 
-    # 輸出所有站名
     print("\n✅ 抓到的站牌資訊如下：")
     for station in all_stations:
         print(f"站名: {station[2]}")
 
     # 建立 GeoDataFrame
-    line_coords = [(station[5], station[4]) for station in all_stations]  # (lon, lat)
+    line_coords = [(station[5], station[4]) for station in all_stations]
     bus_route = gpd.GeoDataFrame(geometry=[LineString(line_coords)], crs="EPSG:4326")
     bus_stops = gpd.GeoDataFrame(geometry=[Point(coord) for coord in line_coords], crs="EPSG:4326")
 
-    # 讀取北北基桃圖層
+    # 讀取北北基桃行政區圖
     shapefile_path = '20250520/COUNTY_MOI_1091124/TOWN_MOI_1140318.shp'
     gdf = gpd.read_file(shapefile_path, encoding='utf-8')
     target_cities = ['臺北市', '新北市', '基隆市', '桃園市']
     filtered_gdf = gdf[gdf['COUNTYNAME'].isin(target_cities)]
 
-    # 計算縣市中心點
+    # 縣市中心標註
     city_centroids = filtered_gdf.dissolve(by='COUNTYNAME', as_index=False)
     city_centroids['centroid'] = city_centroids.geometry.centroid
 
-    # 繪製地圖
+    # 繪圖
     fig, ax = plt.subplots(figsize=(12, 14))
     filtered_gdf.plot(ax=ax, column='COUNTYNAME', cmap='Set3', edgecolor='black', legend=False)
     bus_route.plot(ax=ax, color="red", linewidth=2, label="公車路線")
     bus_stops.plot(ax=ax, color="black", markersize=10)
 
-    # 標註縣市名稱（紅字＋白色描邊）
+    # 縣市文字標註
     for _, row in city_centroids.iterrows():
         x, y = row['centroid'].x, row['centroid'].y
-        text = ax.text(
-            x, y, row['COUNTYNAME'],
-            fontsize=14, color='red', ha='center', va='center', weight='bold'
-        )
+        text = ax.text(x, y, row['COUNTYNAME'], fontsize=14, color='red', ha='center', va='center', weight='bold')
         text.set_path_effects([
             path_effects.Stroke(linewidth=3, foreground='white'),
             path_effects.Normal()
         ])
 
+    # ✅ 左上角顯示「承德幹線」
+    plt.text(0.01, 0.98, "承德幹線", transform=ax.transAxes,
+             fontsize=20, color='black', weight='bold',
+             ha='left', va='top')
+
     plt.title('北北基桃行政區圖 + 公車去程路線', fontsize=16)
     ax.axis('off')
     plt.tight_layout()
-    plt.text(0.01, 0.98, "承德幹線", transform=ax.transAxes,
-         fontsize=20, color='black', weight='bold',
-         ha='left', va='top')
     plt.show()
 
 # ▶ 執行主程式
