@@ -10,7 +10,7 @@
 pip install -r requirements.txt
 ```
 ## 執行
-
+在終端機中請cd至當前目錄
 ```bash
 python main.py
 ```
